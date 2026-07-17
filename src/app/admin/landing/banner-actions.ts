@@ -1,0 +1,63 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+import { bannerSchema, type BannerInput } from "@/lib/validations/promotions";
+import { arDatetimeLocalToUtcIso } from "@/lib/timezone";
+
+export type ActionResult = { error?: string } | undefined;
+
+export async function upsertBannerAction(input: BannerInput): Promise<ActionResult> {
+  const parsed = bannerSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { id, title, cta_text, cta_url, image_url, start_at, end_at, ...rest } = parsed.data;
+
+  const payload = {
+    ...rest,
+    title: title || null,
+    cta_text: cta_text || null,
+    cta_url: cta_url || null,
+    image_url: image_url || null,
+    start_at: arDatetimeLocalToUtcIso(start_at),
+    end_at: arDatetimeLocalToUtcIso(end_at),
+    updated_by: user?.id,
+  };
+
+  const { error } = id
+    ? await supabase.from("banners").update(payload).eq("id", id)
+    : await supabase.from("banners").insert({ ...payload, created_by: user?.id });
+
+  if (error) return { error: "No se pudo guardar." };
+  revalidatePath("/admin/landing");
+  revalidatePath("/");
+}
+
+export async function toggleBannerStatusAction(
+  id: string,
+  status: "draft" | "published"
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("banners").update({ status }).eq("id", id);
+  if (error) return { error: "No se pudo actualizar." };
+  revalidatePath("/admin/landing");
+  revalidatePath("/");
+}
+
+export async function softDeleteBannerAction(id: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { error } = await supabase
+    .from("banners")
+    .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id })
+    .eq("id", id);
+  if (error) return { error: "No se pudo eliminar." };
+  revalidatePath("/admin/landing");
+  revalidatePath("/");
+}

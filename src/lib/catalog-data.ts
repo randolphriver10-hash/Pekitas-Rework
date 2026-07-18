@@ -100,7 +100,10 @@ export async function getFeaturedProducts(limit = 8): Promise<PublicProductCard[
   return ((data ?? []) as unknown as Record<string, unknown>[]).map((row) => mapProductCard(row, promotions));
 }
 
-export async function getPublishedProducts(categoryId?: string): Promise<PublicProductCard[]> {
+export async function getPublishedProducts(
+  categoryId?: string,
+  search?: string
+): Promise<PublicProductCard[]> {
   const supabase = await createClient();
   let query = supabase
     .from("products")
@@ -110,6 +113,7 @@ export async function getPublishedProducts(categoryId?: string): Promise<PublicP
     .order("sort_order", { ascending: true });
 
   if (categoryId) query = query.eq("category_id", categoryId);
+  if (search) query = query.ilike("name", `%${search}%`);
 
   const [{ data }, promotions] = await Promise.all([query, getActivePromotions()]);
   return ((data ?? []) as unknown as Record<string, unknown>[]).map((row) => mapProductCard(row, promotions));

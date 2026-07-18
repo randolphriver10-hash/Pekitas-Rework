@@ -123,6 +123,7 @@ export function PromotionsList({
                         <PromotionDialog
                           categories={categories}
                           products={products}
+                          updatedAt={promo.updated_at}
                           defaultValues={{
                             id: promo.id,
                             name: promo.name,

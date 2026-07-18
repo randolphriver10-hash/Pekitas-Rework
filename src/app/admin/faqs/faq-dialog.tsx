@@ -23,9 +23,11 @@ import { Field, FieldLabel, FieldError, FieldGroup } from "@/components/ui/field
 export function FaqDialog({
   trigger,
   defaultValues,
+  updatedAt,
 }: {
   trigger: ReactElement;
   defaultValues?: FaqInput;
+  updatedAt?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -42,7 +44,7 @@ export function FaqDialog({
 
   const onSubmit = (data: FaqInput) => {
     startTransition(async () => {
-      const result = await upsertFaqAction(data);
+      const result = await upsertFaqAction({ ...data, expectedUpdatedAt: updatedAt });
       if (result?.error) {
         toast.error(result.error);
         return;

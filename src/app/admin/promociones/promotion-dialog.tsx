@@ -35,11 +35,13 @@ export function PromotionDialog({
   defaultValues,
   categories,
   products,
+  updatedAt,
 }: {
   trigger: ReactElement;
   defaultValues?: PromotionInput;
   categories: CategoryRow[];
   products: { id: string; name: string }[];
+  updatedAt?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -68,7 +70,7 @@ export function PromotionDialog({
 
   const onSubmit = (data: PromotionInput) => {
     startTransition(async () => {
-      const result = await upsertPromotionAction(data);
+      const result = await upsertPromotionAction({ ...data, expectedUpdatedAt: updatedAt });
       if (result?.error) {
         toast.error(result.error);
         return;

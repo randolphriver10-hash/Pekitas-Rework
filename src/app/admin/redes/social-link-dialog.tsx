@@ -22,9 +22,11 @@ import { Field, FieldLabel, FieldError, FieldGroup } from "@/components/ui/field
 export function SocialLinkDialog({
   trigger,
   defaultValues,
+  updatedAt,
 }: {
   trigger: ReactElement;
   defaultValues?: SocialLinkInput;
+  updatedAt?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -41,7 +43,7 @@ export function SocialLinkDialog({
 
   const onSubmit = (data: SocialLinkInput) => {
     startTransition(async () => {
-      const result = await upsertSocialLinkAction(data);
+      const result = await upsertSocialLinkAction({ ...data, expectedUpdatedAt: updatedAt });
       if (result?.error) {
         toast.error(result.error);
         return;

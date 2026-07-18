@@ -83,7 +83,7 @@ export function ProductForm({
 
   const onSubmit = (data: ProductInput) => {
     startTransition(async () => {
-      const result = await upsertProductAction(data);
+      const result = await upsertProductAction({ ...data, expectedUpdatedAt: product?.updated_at });
       if (result?.error) {
         toast.error(result.error);
         return;

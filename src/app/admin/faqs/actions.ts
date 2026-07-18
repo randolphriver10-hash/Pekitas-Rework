@@ -4,10 +4,13 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { faqSchema, type FaqInput } from "@/lib/validations/promotions";
 
-export type ActionResult = { error?: string } | undefined;
+export type ActionResult = { error?: string; conflict?: boolean } | undefined;
 
-export async function upsertFaqAction(input: FaqInput): Promise<ActionResult> {
-  const parsed = faqSchema.safeParse(input);
+export async function upsertFaqAction(
+  input: FaqInput & { expectedUpdatedAt?: string }
+): Promise<ActionResult> {
+  const { expectedUpdatedAt, ...rest0 } = input;
+  const parsed = faqSchema.safeParse(rest0);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
 
   const supabase = await createClient();
@@ -17,11 +20,19 @@ export async function upsertFaqAction(input: FaqInput): Promise<ActionResult> {
   const { id, category, ...rest } = parsed.data;
   const payload = { ...rest, category: category || null, updated_by: user?.id };
 
-  const { error } = id
-    ? await supabase.from("faqs").update(payload).eq("id", id)
-    : await supabase.from("faqs").insert({ ...payload, created_by: user?.id });
+  if (id) {
+    let query = supabase.from("faqs").update(payload).eq("id", id);
+    if (expectedUpdatedAt) query = query.eq("updated_at", expectedUpdatedAt);
+    const { data, error } = await query.select("id");
+    if (error) return { error: "No se pudo guardar." };
+    if (expectedUpdatedAt && (!data || data.length === 0)) {
+      return { error: "Otro usuario modificó esta pregunta mientras editabas. Recargá la página.", conflict: true };
+    }
+  } else {
+    const { error } = await supabase.from("faqs").insert({ ...payload, created_by: user?.id });
+    if (error) return { error: "No se pudo guardar." };
+  }
 
-  if (error) return { error: "No se pudo guardar." };
   revalidatePath("/admin/faqs");
   revalidatePath("/");
 }

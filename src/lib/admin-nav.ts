@@ -13,6 +13,7 @@ import {
   Settings,
   Users,
   History,
+  Mail,
 } from "lucide-react";
 
 export type AdminNavItem = {
@@ -33,6 +34,7 @@ export const adminNavItems: AdminNavItem[] = [
   { label: "Preguntas frecuentes", href: "/admin/faqs", icon: HelpCircle },
   { label: "Información del negocio", href: "/admin/negocio", icon: Building2 },
   { label: "Redes sociales", href: "/admin/redes", icon: Share2 },
+  { label: "Newsletter", href: "/admin/newsletter", icon: Mail },
   { label: "Configuración", href: "/admin/configuracion", icon: Settings },
   { label: "Usuarios y permisos", href: "/admin/usuarios", icon: Users, adminOnly: true },
   { label: "Historial de cambios", href: "/admin/historial", icon: History, adminOnly: true },

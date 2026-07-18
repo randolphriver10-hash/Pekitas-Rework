@@ -288,6 +288,14 @@ export interface NotificationRow {
   created_at: string;
 }
 
+export interface NewsletterSubscriberRow {
+  id: string;
+  email: string;
+  segment: "bebes" | "ninas" | "ninos" | "general";
+  is_active: boolean;
+  created_at: string;
+}
+
 type TableDef<
   Row,
   ExtraGeneratedKeys extends keyof Row = never,
@@ -355,6 +363,10 @@ export type Database = {
       >;
       audit_logs: TableDef<AuditLogRow, "id" | "created_at">;
       notifications: TableDef<NotificationRow, "id" | "created_at" | "is_read">;
+      newsletter_subscribers: TableDef<
+        NewsletterSubscriberRow,
+        "id" | "created_at" | "segment" | "is_active"
+      >;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

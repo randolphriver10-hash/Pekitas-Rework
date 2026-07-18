@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ProductsToolbar } from "@/app/admin/productos/products-toolbar";
 import { ProductsTable } from "@/app/admin/productos/products-table";
 import { ProductsPagination } from "@/app/admin/productos/products-pagination";
+import { ProductsImportExport } from "@/app/admin/productos/import-dialog";
 import type { ProductStatus } from "@/lib/supabase/types";
 
 const PAGE_SIZE = 20;
@@ -85,10 +86,13 @@ export default async function ProductsPage({
           <h1 className="text-2xl font-semibold tracking-tight">Productos</h1>
           <p className="text-muted-foreground text-sm">{count ?? 0} producto(s) en total.</p>
         </div>
-        <Button nativeButton={false} render={<Link href="/admin/productos/nuevo" />}>
-          <Plus />
-          Nuevo producto
-        </Button>
+        <div className="flex gap-2">
+          <ProductsImportExport />
+          <Button nativeButton={false} render={<Link href="/admin/productos/nuevo" />}>
+            <Plus />
+            Nuevo producto
+          </Button>
+        </div>
       </div>
 
       <ProductsToolbar categories={categories ?? []} />

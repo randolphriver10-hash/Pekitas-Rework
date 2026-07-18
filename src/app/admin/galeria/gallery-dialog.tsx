@@ -24,9 +24,11 @@ import { Field, FieldLabel, FieldError, FieldGroup } from "@/components/ui/field
 export function GalleryDialog({
   trigger,
   defaultValues,
+  updatedAt,
 }: {
   trigger: ReactElement;
   defaultValues?: GalleryItemInput;
+  updatedAt?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -46,7 +48,7 @@ export function GalleryDialog({
 
   const onSubmit = (data: GalleryItemInput) => {
     startTransition(async () => {
-      const result = await upsertGalleryItemAction(data);
+      const result = await upsertGalleryItemAction({ ...data, expectedUpdatedAt: updatedAt });
       if (result?.error) {
         toast.error(result.error);
         return;

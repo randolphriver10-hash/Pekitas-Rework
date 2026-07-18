@@ -5,6 +5,7 @@ import { WhatsAppFloatingButton } from "@/components/site/whatsapp-button";
 import { TopBanner } from "@/components/site/top-banner";
 import { RealtimeWatcher } from "@/components/site/realtime-watcher";
 import { getSiteSettings, getPublishedSections, getSection } from "@/lib/site-data";
+import { getActiveCategories } from "@/lib/catalog-data";
 import { getActiveBanner } from "@/lib/banners-data";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { createClient } from "@/lib/supabase/server";
@@ -22,11 +23,12 @@ const manrope = Manrope({
 
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
-  const [settings, sections, { data: socialLinks }, topBanner] = await Promise.all([
+  const [settings, sections, { data: socialLinks }, topBanner, categories] = await Promise.all([
     getSiteSettings(),
     getPublishedSections(),
     supabase.from("social_links").select("*").eq("is_active", true).order("sort_order"),
     getActiveBanner("top"),
+    getActiveCategories(),
   ]);
 
   const header = getSection(sections, "header");
@@ -45,6 +47,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         logoUrl={(header?.content as { logo_url?: string })?.logo_url}
         businessName={settings?.business_name ?? "Pekitas"}
         whatsappUrl={whatsappUrl}
+        categories={categories}
       />
       <main className="flex-1">{children}</main>
       <SiteFooter

@@ -69,6 +69,7 @@ export function BannersSection({ banners }: { banners: BannerRow[] }) {
                     {b.status === "published" ? "Ocultar" : "Publicar"}
                   </Button>
                   <BannerDialog
+                    updatedAt={b.updated_at}
                     defaultValues={{
                       id: b.id,
                       title: b.title ?? "",

@@ -11,18 +11,18 @@ export const metadata: Metadata = { title: "Productos — Pekitas" };
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ categoria?: string }>;
+  searchParams: Promise<{ categoria?: string; q?: string }>;
 }) {
-  const { categoria } = await searchParams;
+  const { categoria, q } = await searchParams;
   const [products, categories] = await Promise.all([
-    getPublishedProducts(categoria),
+    getPublishedProducts(categoria, q),
     getActiveCategories(),
   ]);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 md:py-16">
       <h1 className="font-[family-name:var(--font-fraunces)] text-3xl font-medium text-(--site-ink)">
-        Catálogo
+        {q ? `Resultados para "${q}"` : "Catálogo"}
       </h1>
 
       {categories.length > 0 && (
@@ -55,7 +55,9 @@ export default async function ProductsPage({
 
       {products.length === 0 ? (
         <p className="text-muted-foreground mt-12 text-center">
-          Todavía no hay productos publicados en esta categoría.
+          {q
+            ? `No encontramos productos que coincidan con "${q}".`
+            : "Todavía no hay productos publicados en esta categoría."}
         </p>
       ) : (
         <div className="mt-10 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">

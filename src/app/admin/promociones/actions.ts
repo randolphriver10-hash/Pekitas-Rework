@@ -5,10 +5,13 @@ import { createClient } from "@/lib/supabase/server";
 import { promotionSchema, type PromotionInput } from "@/lib/validations/promotions";
 import { arDatetimeLocalToUtcIso } from "@/lib/timezone";
 
-export type ActionResult = { error?: string } | undefined;
+export type ActionResult = { error?: string; conflict?: boolean } | undefined;
 
-export async function upsertPromotionAction(input: PromotionInput): Promise<ActionResult> {
-  const parsed = promotionSchema.safeParse(input);
+export async function upsertPromotionAction(
+  input: PromotionInput & { expectedUpdatedAt?: string }
+): Promise<ActionResult> {
+  const { expectedUpdatedAt, ...rest0 } = input;
+  const parsed = promotionSchema.safeParse(rest0);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
   }
@@ -49,8 +52,13 @@ export async function upsertPromotionAction(input: PromotionInput): Promise<Acti
   let promotionId = id;
 
   if (id) {
-    const { error } = await supabase.from("promotions").update(payload).eq("id", id);
+    let query = supabase.from("promotions").update(payload).eq("id", id);
+    if (expectedUpdatedAt) query = query.eq("updated_at", expectedUpdatedAt);
+    const { data, error } = await query.select("id");
     if (error) return { error: "No se pudo guardar." };
+    if (expectedUpdatedAt && (!data || data.length === 0)) {
+      return { error: "Otro usuario modificó esta promoción mientras editabas. Recargá la página.", conflict: true };
+    }
   } else {
     const { data, error } = await supabase
       .from("promotions")

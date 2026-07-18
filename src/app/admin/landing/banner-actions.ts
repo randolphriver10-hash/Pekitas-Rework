@@ -5,10 +5,13 @@ import { createClient } from "@/lib/supabase/server";
 import { bannerSchema, type BannerInput } from "@/lib/validations/promotions";
 import { arDatetimeLocalToUtcIso } from "@/lib/timezone";
 
-export type ActionResult = { error?: string } | undefined;
+export type ActionResult = { error?: string; conflict?: boolean } | undefined;
 
-export async function upsertBannerAction(input: BannerInput): Promise<ActionResult> {
-  const parsed = bannerSchema.safeParse(input);
+export async function upsertBannerAction(
+  input: BannerInput & { expectedUpdatedAt?: string }
+): Promise<ActionResult> {
+  const { expectedUpdatedAt, ...rest0 } = input;
+  const parsed = bannerSchema.safeParse(rest0);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
 
   const supabase = await createClient();
@@ -28,11 +31,19 @@ export async function upsertBannerAction(input: BannerInput): Promise<ActionResu
     updated_by: user?.id,
   };
 
-  const { error } = id
-    ? await supabase.from("banners").update(payload).eq("id", id)
-    : await supabase.from("banners").insert({ ...payload, created_by: user?.id });
+  if (id) {
+    let query = supabase.from("banners").update(payload).eq("id", id);
+    if (expectedUpdatedAt) query = query.eq("updated_at", expectedUpdatedAt);
+    const { data, error } = await query.select("id");
+    if (error) return { error: "No se pudo guardar." };
+    if (expectedUpdatedAt && (!data || data.length === 0)) {
+      return { error: "Otro usuario modificó este banner mientras editabas. Recargá la página.", conflict: true };
+    }
+  } else {
+    const { error } = await supabase.from("banners").insert({ ...payload, created_by: user?.id });
+    if (error) return { error: "No se pudo guardar." };
+  }
 
-  if (error) return { error: "No se pudo guardar." };
   revalidatePath("/admin/landing");
   revalidatePath("/");
 }

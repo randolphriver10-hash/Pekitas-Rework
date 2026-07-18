@@ -4,10 +4,13 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { categorySchema, type CategoryInput } from "@/lib/validations/catalog";
 
-export type ActionResult = { error?: string } | undefined;
+export type ActionResult = { error?: string; conflict?: boolean } | undefined;
 
-export async function upsertCategoryAction(input: CategoryInput): Promise<ActionResult> {
-  const parsed = categorySchema.safeParse(input);
+export async function upsertCategoryAction(
+  input: CategoryInput & { expectedUpdatedAt?: string }
+): Promise<ActionResult> {
+  const { expectedUpdatedAt, ...rest0 } = input;
+  const parsed = categorySchema.safeParse(rest0);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
   }
@@ -26,13 +29,23 @@ export async function upsertCategoryAction(input: CategoryInput): Promise<Action
     updated_by: user?.id ?? null,
   };
 
-  const { error } = id
-    ? await supabase.from("categories").update(payload).eq("id", id)
-    : await supabase.from("categories").insert({ ...payload, created_by: user?.id ?? null });
-
-  if (error) {
-    if (error.code === "23505") return { error: "Ya existe una categoría con ese slug." };
-    return { error: "No se pudo guardar." };
+  if (id) {
+    let query = supabase.from("categories").update(payload).eq("id", id);
+    if (expectedUpdatedAt) query = query.eq("updated_at", expectedUpdatedAt);
+    const { data, error } = await query.select("id");
+    if (error) {
+      if (error.code === "23505") return { error: "Ya existe una categoría con ese slug." };
+      return { error: "No se pudo guardar." };
+    }
+    if (expectedUpdatedAt && (!data || data.length === 0)) {
+      return { error: "Otro usuario modificó esta categoría mientras editabas. Recargá la página.", conflict: true };
+    }
+  } else {
+    const { error } = await supabase.from("categories").insert({ ...payload, created_by: user?.id ?? null });
+    if (error) {
+      if (error.code === "23505") return { error: "Ya existe una categoría con ese slug." };
+      return { error: "No se pudo guardar." };
+    }
   }
 
   revalidatePath("/admin/categorias");

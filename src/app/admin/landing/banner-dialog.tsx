@@ -29,9 +29,11 @@ import {
 export function BannerDialog({
   trigger,
   defaultValues,
+  updatedAt,
 }: {
   trigger: ReactElement;
   defaultValues?: BannerInput;
+  updatedAt?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -48,7 +50,7 @@ export function BannerDialog({
 
   const onSubmit = (data: BannerInput) => {
     startTransition(async () => {
-      const result = await upsertBannerAction(data);
+      const result = await upsertBannerAction({ ...data, expectedUpdatedAt: updatedAt });
       if (result?.error) {
         toast.error(result.error);
         return;

@@ -33,10 +33,12 @@ export function CategoryDialog({
   trigger,
   defaultValues,
   parentOptions,
+  updatedAt,
 }: {
   trigger: ReactElement;
   defaultValues?: CategoryInput;
   parentOptions: CategoryRow[];
+  updatedAt?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -63,7 +65,7 @@ export function CategoryDialog({
 
   const onSubmit = (data: CategoryInput) => {
     startTransition(async () => {
-      const result = await upsertCategoryAction(data);
+      const result = await upsertCategoryAction({ ...data, expectedUpdatedAt: updatedAt });
       if (result?.error) {
         toast.error(result.error);
         return;

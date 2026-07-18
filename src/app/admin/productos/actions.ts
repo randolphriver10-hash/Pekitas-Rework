@@ -3,16 +3,18 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { parseCsv } from "@/lib/csv";
 import {
   productSchema,
   productImageSchema,
   productVariantSchema,
+  slugify,
   type ProductInput,
   type ProductImageInput,
   type ProductVariantInput,
 } from "@/lib/validations/catalog";
 
-export type ActionResult = { error?: string; id?: string } | undefined;
+export type ActionResult = { error?: string; id?: string; conflict?: boolean } | undefined;
 
 function omit<T extends object, K extends keyof T>(obj: T, keys: K[]): Omit<T, K> {
   const result = { ...obj };
@@ -25,8 +27,11 @@ function parseTags(tagsText?: string): string[] {
   return [...new Set(tagsText.split(",").map((t) => t.trim()).filter(Boolean))];
 }
 
-export async function upsertProductAction(input: ProductInput): Promise<ActionResult> {
-  const parsed = productSchema.safeParse(input);
+export async function upsertProductAction(
+  input: ProductInput & { expectedUpdatedAt?: string }
+): Promise<ActionResult> {
+  const { expectedUpdatedAt, ...rest0 } = input;
+  const parsed = productSchema.safeParse(rest0);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
   }
@@ -55,10 +60,15 @@ export async function upsertProductAction(input: ProductInput): Promise<ActionRe
   };
 
   if (id) {
-    const { error } = await supabase.from("products").update(payload).eq("id", id);
+    let query = supabase.from("products").update(payload).eq("id", id);
+    if (expectedUpdatedAt) query = query.eq("updated_at", expectedUpdatedAt);
+    const { data, error } = await query.select("id");
     if (error) {
       if (error.code === "23505") return { error: "Ya existe un producto con ese slug o SKU." };
       return { error: "No se pudo guardar." };
+    }
+    if (expectedUpdatedAt && (!data || data.length === 0)) {
+      return { error: "Otro usuario modificó este producto mientras editabas. Recargá la página.", conflict: true };
     }
     revalidatePath("/admin/productos");
     revalidatePath("/");
@@ -269,4 +279,127 @@ export async function removeVariantAction(variantId: string): Promise<ActionResu
   if (error) return { error: "No se pudo eliminar la variante." };
   revalidatePath("/admin/productos");
   revalidatePath("/");
+}
+
+// -------------------------------------------------------------- CSV import
+const TRUTHY = new Set(["true", "1", "si", "sí", "yes", "x"]);
+
+export type ImportSummary = {
+  created: number;
+  updated: number;
+  errors: { row: number; message: string }[];
+};
+
+export async function importProductsCsvAction(formData: FormData): Promise<ImportSummary | { error: string }> {
+  const file = formData.get("file");
+  if (!(file instanceof File)) return { error: "No se recibió ningún archivo." };
+
+  const text = await file.text();
+  const rows = parseCsv(text);
+  if (rows.length === 0) return { error: "El archivo está vacío o no tiene filas de datos." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: categories } = await supabase.from("categories").select("id, name").is("deleted_at", null);
+  const categoryByName = new Map((categories ?? []).map((c) => [c.name.trim().toLowerCase(), c.id]));
+
+  const summary: ImportSummary = { created: 0, updated: 0, errors: [] };
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const rowNumber = i + 2; // +1 header, +1 índice 1-based
+
+    const name = row.name?.trim();
+    if (!name) {
+      summary.errors.push({ row: rowNumber, message: "Falta el nombre." });
+      continue;
+    }
+
+    const categoryName = row.category?.trim().toLowerCase();
+    const categoryId = categoryName ? categoryByName.get(categoryName) : undefined;
+    if (categoryName && !categoryId) {
+      summary.errors.push({ row: rowNumber, message: `Categoría "${row.category}" no existe.` });
+      continue;
+    }
+
+    const input: ProductInput = {
+      id: row.id?.trim() || undefined,
+      name,
+      slug: row.slug?.trim() || slugify(name),
+      sku: row.sku?.trim() || undefined,
+      short_description: row.short_description || undefined,
+      description: row.description || undefined,
+      price: row.price,
+      sale_price: row.sale_price || undefined,
+      cost: row.cost || undefined,
+      category_id: categoryId ?? "",
+      status: (row.status?.trim() as ProductInput["status"]) || "draft",
+      stock: row.stock || "0",
+      is_featured: TRUTHY.has(row.is_featured?.trim().toLowerCase() ?? ""),
+      is_new: TRUTHY.has(row.is_new?.trim().toLowerCase() ?? ""),
+      material: row.material || undefined,
+      tagsText: row.tags ? row.tags.split("|").join(", ") : undefined,
+      seo_title: row.seo_title || undefined,
+      seo_description: row.seo_description || undefined,
+    };
+
+    const parsed = productSchema.safeParse(input);
+    if (!parsed.success) {
+      summary.errors.push({ row: rowNumber, message: parsed.error.issues[0]?.message ?? "Datos inválidos." });
+      continue;
+    }
+
+    const {
+      id,
+      tagsText,
+      category_id,
+      sale_price,
+      cost,
+      sku,
+      short_description,
+      description,
+      material,
+      seo_title,
+      seo_description,
+      ...rest
+    } = parsed.data;
+
+    const payload = {
+      ...rest,
+      category_id: category_id || null,
+      sale_price: sale_price && !Number.isNaN(sale_price) ? sale_price : null,
+      cost: cost && !Number.isNaN(cost) ? cost : null,
+      sku: sku || null,
+      short_description: short_description || null,
+      description: description || null,
+      material: material || null,
+      seo_title: seo_title || null,
+      seo_description: seo_description || null,
+      tags: parseTags(tagsText),
+      updated_by: user?.id,
+    };
+
+    if (id) {
+      const { error } = await supabase.from("products").update(payload).eq("id", id);
+      if (error) {
+        summary.errors.push({ row: rowNumber, message: "No se pudo actualizar (¿slug o SKU duplicado?)." });
+        continue;
+      }
+      summary.updated++;
+    } else {
+      const { error } = await supabase.from("products").insert({ ...payload, created_by: user?.id });
+      if (error) {
+        summary.errors.push({ row: rowNumber, message: "No se pudo crear (¿slug o SKU duplicado?)." });
+        continue;
+      }
+      summary.created++;
+    }
+  }
+
+  revalidatePath("/admin/productos");
+  revalidatePath("/");
+  return summary;
 }

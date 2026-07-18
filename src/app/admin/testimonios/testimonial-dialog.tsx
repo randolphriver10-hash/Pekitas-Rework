@@ -29,9 +29,11 @@ import {
 export function TestimonialDialog({
   trigger,
   defaultValues,
+  updatedAt,
 }: {
   trigger: ReactElement;
   defaultValues?: TestimonialInput;
+  updatedAt?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -48,7 +50,7 @@ export function TestimonialDialog({
 
   const onSubmit = (data: TestimonialInput) => {
     startTransition(async () => {
-      const result = await upsertTestimonialAction(data);
+      const result = await upsertTestimonialAction({ ...data, expectedUpdatedAt: updatedAt });
       if (result?.error) {
         toast.error(result.error);
         return;

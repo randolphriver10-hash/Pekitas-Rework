@@ -9,6 +9,7 @@ import { PromoBanner } from "@/components/site/promo-banner";
 import { TestimonialsSection } from "@/components/site/testimonials-section";
 import { FaqSection } from "@/components/site/faq-section";
 import { GallerySection } from "@/components/site/gallery-section";
+import { NewsletterSection } from "@/components/site/newsletter-section";
 import { getSiteSettings, getPublishedSections, getSection } from "@/lib/site-data";
 import { getFeaturedProducts, getActiveCategories } from "@/lib/catalog-data";
 import { getActiveBannerPromotion } from "@/lib/promotions";
@@ -128,6 +129,7 @@ export default async function HomePage() {
       {about && <About content={about.content as AboutContent} />}
       <TestimonialsSection testimonials={testimonials ?? []} />
       <FaqSection faqs={faqs ?? []} />
+      <NewsletterSection />
     </>
   );
 }

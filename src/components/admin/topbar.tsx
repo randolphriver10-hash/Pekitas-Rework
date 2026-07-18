@@ -5,9 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { AdminMobileNav } from "@/components/admin/mobile-nav";
 import { AdminBreadcrumbs } from "@/components/admin/breadcrumbs";
 import { UserMenu } from "@/components/admin/user-menu";
+import { NotificationBell } from "@/components/admin/notification-bell";
+import { getRecentNotifications } from "@/lib/notifications-data";
 import type { CurrentStaff } from "@/lib/auth/current-staff";
 
-export function AdminTopbar({ staff }: { staff: CurrentStaff }) {
+export async function AdminTopbar({ staff }: { staff: CurrentStaff }) {
+  const notifications = await getRecentNotifications();
+
   return (
     <header className="bg-background/80 sticky top-0 z-10 flex items-center gap-3 border-b px-4 py-3 backdrop-blur">
       <AdminMobileNav isAdmin={staff.role === "admin"} />
@@ -30,6 +34,8 @@ export function AdminTopbar({ staff }: { staff: CurrentStaff }) {
           Ver landing
           <ExternalLink className="h-3.5 w-3.5" />
         </Button>
+
+        <NotificationBell initial={notifications} />
 
         <UserMenu staff={staff} />
       </div>

@@ -4,10 +4,13 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { testimonialSchema, type TestimonialInput } from "@/lib/validations/promotions";
 
-export type ActionResult = { error?: string } | undefined;
+export type ActionResult = { error?: string; conflict?: boolean } | undefined;
 
-export async function upsertTestimonialAction(input: TestimonialInput): Promise<ActionResult> {
-  const parsed = testimonialSchema.safeParse(input);
+export async function upsertTestimonialAction(
+  input: TestimonialInput & { expectedUpdatedAt?: string }
+): Promise<ActionResult> {
+  const { expectedUpdatedAt, ...rest0 } = input;
+  const parsed = testimonialSchema.safeParse(rest0);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
 
   const supabase = await createClient();
@@ -23,11 +26,19 @@ export async function upsertTestimonialAction(input: TestimonialInput): Promise<
     updated_by: user?.id,
   };
 
-  const { error } = id
-    ? await supabase.from("testimonials").update(payload).eq("id", id)
-    : await supabase.from("testimonials").insert({ ...payload, created_by: user?.id });
+  if (id) {
+    let query = supabase.from("testimonials").update(payload).eq("id", id);
+    if (expectedUpdatedAt) query = query.eq("updated_at", expectedUpdatedAt);
+    const { data, error } = await query.select("id");
+    if (error) return { error: "No se pudo guardar." };
+    if (expectedUpdatedAt && (!data || data.length === 0)) {
+      return { error: "Otro usuario modificó este testimonio mientras editabas. Recargá la página.", conflict: true };
+    }
+  } else {
+    const { error } = await supabase.from("testimonials").insert({ ...payload, created_by: user?.id });
+    if (error) return { error: "No se pudo guardar." };
+  }
 
-  if (error) return { error: "No se pudo guardar." };
   revalidatePath("/admin/testimonios");
   revalidatePath("/");
 }

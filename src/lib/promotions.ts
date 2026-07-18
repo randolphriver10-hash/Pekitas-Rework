@@ -1,8 +1,10 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { PromotionRow } from "@/lib/supabase/types";
+import { findPromotionForProduct, computeDiscountedPrice, type ActivePromotion } from "@/lib/promotions-logic";
 
-export type ActivePromotion = PromotionRow & { productIds: string[] };
+export type { ActivePromotion };
+export { findPromotionForProduct, computeDiscountedPrice };
 
 export async function getActivePromotions(): Promise<ActivePromotion[]> {
   const supabase = await createClient();
@@ -25,27 +27,7 @@ export async function getActivePromotions(): Promise<ActivePromotion[]> {
   }));
 }
 
-export function findPromotionForProduct(
-  promotions: ActivePromotion[],
-  productId: string,
-  categoryId: string | null
-): ActivePromotion | undefined {
-  return promotions.find(
-    (p) => p.productIds.includes(productId) || (p.category_id && p.category_id === categoryId)
-  );
-}
-
 export async function getActiveBannerPromotion(): Promise<ActivePromotion | null> {
   const promotions = await getActivePromotions();
   return promotions.find((p) => p.banner_enabled) ?? null;
-}
-
-export function computeDiscountedPrice(price: number, promotion: ActivePromotion): number {
-  if (promotion.discount_type === "fixed_price" && promotion.fixed_price != null) {
-    return promotion.fixed_price;
-  }
-  if (promotion.discount_type === "percentage" && promotion.discount_percentage != null) {
-    return Math.round(price * (1 - promotion.discount_percentage / 100) * 100) / 100;
-  }
-  return price;
 }

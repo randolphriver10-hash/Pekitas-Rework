@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Minus, Plus, ShoppingBag, Check } from "lucide-react";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import { useCart } from "@/components/site/cart-provider";
 
 type Variant = {
   id: string;
@@ -16,6 +17,8 @@ type Variant = {
 type ProductImage = { id: string; url: string; alt_text: string; is_primary: boolean };
 
 export function ProductDetail({
+  productId,
+  slug,
   name,
   price,
   salePrice,
@@ -26,6 +29,8 @@ export function ProductDetail({
   messageTemplate,
   productUrl,
 }: {
+  productId: string;
+  slug: string;
   name: string;
   price: number;
   salePrice: number | null;
@@ -50,12 +55,32 @@ export function ProductDetail({
 
   const [selectedSize, setSelectedSize] = useState<string | null>(sizes[0] ?? null);
   const [selectedColor, setSelectedColor] = useState<string | null>(colors[0] ?? null);
+  const [quantity, setQuantity] = useState(1);
+  const [justAdded, setJustAdded] = useState(false);
+  const { addItem } = useCart();
 
   const selectedVariant = variants.find(
     (v) => (sizes.length === 0 || v.size === selectedSize) && (colors.length === 0 || v.color === selectedColor)
   );
   const effectiveStock = variants.length > 0 ? (selectedVariant?.stock ?? 0) : stock;
   const isOutOfStock = effectiveStock === 0;
+  const effectivePrice = salePrice ?? price;
+
+  const handleAddToCart = () => {
+    addItem({
+      productId,
+      slug,
+      name,
+      imageUrl: sortedImages[0]?.url ?? null,
+      price: effectivePrice,
+      size: sizes.length > 0 ? selectedSize : null,
+      color: colors.length > 0 ? selectedColor : null,
+      quantity,
+      maxStock: effectiveStock,
+    });
+    setJustAdded(true);
+    setTimeout(() => setJustAdded(false), 2000);
+  };
 
   const message = (messageTemplate ?? "Hola! Quería consultar por {product_name} ({product_url}).")
     .replace("{product_name}", name)
@@ -162,17 +187,55 @@ export function ProductDetail({
           {isOutOfStock ? "Sin stock" : "Disponible"}
         </p>
 
-        {whatsappUrl && (
-          <a
-            href={whatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-4 inline-flex h-12 items-center gap-2 rounded-full bg-emerald-500 px-6 text-sm font-medium text-white shadow-sm transition-transform hover:-translate-y-0.5"
-          >
-            <MessageCircle className="h-4 w-4" />
-            Consultar por WhatsApp
-          </a>
+        {!isOutOfStock && (
+          <div className="mt-4 flex items-center gap-2">
+            <div className="flex items-center rounded-full border border-stone-300">
+              <button
+                type="button"
+                aria-label="Restar cantidad"
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                className="flex h-10 w-10 items-center justify-center text-stone-600"
+              >
+                <Minus className="h-4 w-4" />
+              </button>
+              <span className="w-6 text-center text-sm">{quantity}</span>
+              <button
+                type="button"
+                aria-label="Sumar cantidad"
+                onClick={() => setQuantity((q) => Math.min(q + 1, effectiveStock))}
+                disabled={quantity >= effectiveStock}
+                className="flex h-10 w-10 items-center justify-center text-stone-600 disabled:opacity-40"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         )}
+
+        <div className="mt-4 flex flex-wrap gap-3">
+          {!isOutOfStock && (
+            <button
+              type="button"
+              onClick={handleAddToCart}
+              className="inline-flex h-12 items-center gap-2 rounded-full bg-(--site-ink) px-6 text-sm font-medium text-white shadow-sm transition-transform hover:-translate-y-0.5"
+            >
+              {justAdded ? <Check className="h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}
+              {justAdded ? "Agregado" : "Agregar al carrito"}
+            </button>
+          )}
+
+          {whatsappUrl && (
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-12 items-center gap-2 rounded-full border border-emerald-500 px-6 text-sm font-medium text-emerald-600 shadow-sm transition-transform hover:-translate-y-0.5"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Consultar por WhatsApp
+            </a>
+          )}
+        </div>
       </div>
     </div>
   );

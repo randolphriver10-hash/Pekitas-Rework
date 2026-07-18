@@ -4,17 +4,20 @@ import { MessageCircle } from "lucide-react";
 import { CategoryMegaMenu } from "@/components/site/category-mega-menu";
 import { SiteMobileNav } from "@/components/site/mobile-nav";
 import { SiteSearchBox } from "@/components/site/search-box";
+import { CartSheet } from "@/components/site/cart-sheet";
 import type { CategoryRow } from "@/lib/supabase/types";
 
 export function SiteHeader({
   logoUrl,
   businessName,
   whatsappUrl,
+  whatsappNumber,
   categories,
 }: {
   logoUrl?: string;
   businessName: string;
   whatsappUrl: string | null;
+  whatsappNumber: string | null;
   categories: CategoryRow[];
 }) {
   return (
@@ -27,9 +30,9 @@ export function SiteHeader({
               <Image
                 src={logoUrl}
                 alt={businessName}
-                width={40}
-                height={40}
-                className="h-9 w-auto object-contain"
+                width={180}
+                height={60}
+                className="h-10 w-auto object-contain"
                 priority
               />
             ) : (
@@ -60,6 +63,7 @@ export function SiteHeader({
           <div className="hidden sm:block">
             <SiteSearchBox />
           </div>
+          <CartSheet whatsappNumber={whatsappNumber} />
           {whatsappUrl && (
             <a
               href={whatsappUrl}

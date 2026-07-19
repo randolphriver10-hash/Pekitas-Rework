@@ -7,21 +7,24 @@ import type { CategoryRow } from "@/lib/supabase/types";
 
 export function SiteMobileNav({ categories }: { categories: CategoryRow[] }) {
   const [open, setOpen] = useState(false);
-  const topLevel = categories.filter((c) => !c.parent_id);
+  const roots = categories.filter((c) => !c.parent_id);
+  // Con una única categoría raíz ("Nenas") que agrupa todo, lo navegable son sus
+  // hijas directamente — mostrar solo la raíz sería un ítem inútil de un solo hijo.
+  const topLevel = roots.length === 1 ? categories.filter((c) => c.parent_id === roots[0].id) : roots;
 
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-stone-700 md:hidden"
+        className="text-stone-700"
         aria-label="Abrir menú"
       >
         <Menu className="h-6 w-6" />
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 md:hidden">
+        <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/30" onClick={() => setOpen(false)} />
           <div className="bg-(--site-cream) absolute inset-y-0 left-0 w-72 overflow-y-auto p-5">
             <button

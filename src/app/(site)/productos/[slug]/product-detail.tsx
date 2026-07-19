@@ -5,6 +5,7 @@ import Image from "next/image";
 import { MessageCircle, Minus, Plus, ShoppingBag, Check } from "lucide-react";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { useCart } from "@/components/site/cart-provider";
+import { useRecordProductView } from "@/components/site/recently-viewed";
 
 type Variant = {
   id: string;
@@ -43,6 +44,7 @@ export function ProductDetail({
 }) {
   const sortedImages = images.length > 0 ? images : [];
   const [activeImage, setActiveImage] = useState(0);
+  useRecordProductView(slug);
 
   const sizes = useMemo(
     () => [...new Set(variants.map((v) => v.size).filter(Boolean))] as string[],
@@ -149,10 +151,10 @@ export function ProductDetail({
                 <button
                   key={size}
                   onClick={() => setSelectedSize(size)}
-                  className={`rounded-full border px-4 py-1.5 text-sm ${
+                  className={`flex h-10 w-10 items-center justify-center rounded-full border text-sm font-medium ${
                     selectedSize === size
                       ? "border-(--site-ink) bg-(--site-ink) text-white"
-                      : "border-stone-300 text-stone-600"
+                      : "border-stone-300 text-stone-700"
                   }`}
                 >
                   {size}

@@ -6,6 +6,7 @@ import { getProductBySlug, getPublishedProducts } from "@/lib/catalog-data";
 import { getSiteSettings } from "@/lib/site-data";
 import { ProductDetail } from "@/app/(site)/productos/[slug]/product-detail";
 import { ProductCard } from "@/components/site/product-card";
+import { RecentlyViewed } from "@/components/site/recently-viewed";
 
 export const dynamic = "force-dynamic";
 
@@ -119,6 +120,8 @@ export default async function ProductDetailPage({
           </div>
         </div>
       )}
+
+      <RecentlyViewed currentSlug={product.slug} />
     </div>
   );
 }

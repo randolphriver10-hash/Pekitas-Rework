@@ -14,10 +14,14 @@ export default async function ProductsPage({
   searchParams: Promise<{ categoria?: string; q?: string }>;
 }) {
   const { categoria, q } = await searchParams;
-  const [products, categories] = await Promise.all([
+  const [products, allCategories] = await Promise.all([
     getPublishedProducts(categoria, q),
     getActiveCategories(),
   ]);
+  const roots = allCategories.filter((c) => !c.parent_id);
+  // Misma lógica que en el header/home: con una única raíz que agrupa todo, los
+  // filtros útiles son sus hijas, no la raíz en sí (sería redundante con "Todos").
+  const categories = roots.length === 1 ? allCategories.filter((c) => c.parent_id === roots[0].id) : roots;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 md:py-16">

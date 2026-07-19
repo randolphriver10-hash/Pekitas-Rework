@@ -46,7 +46,6 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       <SiteHeader
         logoUrl={(header?.content as { logo_url?: string })?.logo_url}
         businessName={settings?.business_name ?? "Pekitas"}
-        whatsappUrl={whatsappUrl}
         whatsappNumber={settings?.whatsapp_number ?? null}
         categories={categories}
       />

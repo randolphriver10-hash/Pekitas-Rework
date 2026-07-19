@@ -10,7 +10,7 @@ import {
 } from "@/lib/promotions";
 
 const PUBLIC_PRODUCT_FIELDS =
-  "id, name, slug, short_description, price, sale_price, is_on_sale, is_new, is_featured, stock, category_id, product_images(url, alt_text, is_primary, sort_order)";
+  "id, name, slug, short_description, price, sale_price, is_on_sale, is_new, is_featured, stock, category_id, product_images(url, alt_text, is_primary, sort_order), product_variants(size, color, stock, is_active)";
 
 // `cost` está deliberadamente fuera del GRANT de columnas para `anon` (migración 010).
 // Un `select("*")` sobre products pide TODAS las columnas incluida `cost`, así que
@@ -54,6 +54,7 @@ export type PublicProductCard = {
   stock: number;
   category_id: string | null;
   imageUrl: string | null;
+  defaultVariant: { size: string | null; color: string | null; stock: number } | null;
 };
 
 function mapProductCard(row: Record<string, unknown>, promotions: ActivePromotion[]): PublicProductCard {
@@ -68,6 +69,11 @@ function mapProductCard(row: Record<string, unknown>, promotions: ActivePromotio
   const effectiveSalePrice =
     promoPrice != null && promoPrice < price ? promoPrice : storedSalePrice;
 
+  const variants =
+    (row.product_variants as { size: string | null; color: string | null; stock: number; is_active: boolean }[] | null) ??
+    [];
+  const defaultVariant = variants.find((v) => v.is_active && v.stock > 0) ?? null;
+
   return {
     id: row.id as string,
     name: row.name as string,
@@ -81,6 +87,9 @@ function mapProductCard(row: Record<string, unknown>, promotions: ActivePromotio
     stock: row.stock as number,
     category_id: categoryId,
     imageUrl: primary?.url ?? null,
+    defaultVariant: defaultVariant
+      ? { size: defaultVariant.size, color: defaultVariant.color, stock: defaultVariant.stock }
+      : null,
   };
 }
 

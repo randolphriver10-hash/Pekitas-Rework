@@ -32,3 +32,15 @@ test("cart persists across a page reload (localStorage)", async ({ page }) => {
   await page.reload();
   await expect(page.getByLabel("Ver carrito").locator("span")).toHaveText("1");
 });
+
+test("quick-add from a product card in the homepage carousel", async ({ page }) => {
+  await page.goto("/");
+  const carousel = page.locator("#productos");
+  await expect(carousel.getByRole("button", { name: "Agregar" }).first()).toBeVisible();
+
+  await carousel.getByRole("button", { name: "Agregar" }).first().click();
+  await expect(page.getByLabel("Ver carrito").locator("span")).toHaveText("1");
+
+  // El quick-add no debe navegar a la página del producto.
+  await expect(page).toHaveURL("/");
+});

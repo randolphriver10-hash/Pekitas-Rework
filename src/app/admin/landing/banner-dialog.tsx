@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useTransition, type ReactElement } from "react";
+import Image from "next/image";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { bannerSchema, type BannerInput } from "@/lib/validations/promotions";
 import { upsertBannerAction } from "@/app/admin/landing/banner-actions";
+import { ImageUploader } from "@/components/admin/image-uploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -42,11 +44,15 @@ export function BannerDialog({
     register,
     handleSubmit,
     control,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<BannerInput>({
     resolver: zodResolver(bannerSchema),
     defaultValues: defaultValues ?? { message: "", position: "top", status: "draft" },
   });
+
+  const imageUrl = watch("image_url");
 
   const onSubmit = (data: BannerInput) => {
     startTransition(async () => {
@@ -78,6 +84,29 @@ export function BannerDialog({
               <FieldLabel htmlFor="b-message">Mensaje</FieldLabel>
               <Textarea id="b-message" rows={2} {...register("message")} />
               <FieldError errors={errors.message ? [errors.message] : undefined} />
+            </Field>
+            <Field>
+              <FieldLabel>Imagen (para el banner Hero, ej. carrusel de inicio)</FieldLabel>
+              {imageUrl ? (
+                <div className="relative aspect-[4/5] w-full max-w-40 overflow-hidden rounded-lg border">
+                  <Image src={imageUrl} alt="" fill className="object-cover" />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="absolute right-1 bottom-1"
+                    onClick={() => setValue("image_url", "")}
+                  >
+                    Quitar
+                  </Button>
+                </div>
+              ) : (
+                <ImageUploader
+                  bucket="site-assets"
+                  folder="banners"
+                  onUploaded={(url) => setValue("image_url", url)}
+                />
+              )}
             </Field>
             <div className="grid grid-cols-2 gap-4">
               <Field>

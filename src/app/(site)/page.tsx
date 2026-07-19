@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { AnnouncementBar } from "@/components/site/announcement-bar";
-import { Hero } from "@/components/site/hero";
+import { HeroCarousel } from "@/components/site/hero-carousel";
 import { Benefits } from "@/components/site/benefits";
 import { About } from "@/components/site/about";
 import { FeaturedProducts } from "@/components/site/featured-products";
@@ -13,16 +13,8 @@ import { NewsletterSection } from "@/components/site/newsletter-section";
 import { getSiteSettings, getPublishedSections, getSection } from "@/lib/site-data";
 import { getFeaturedProducts, getActiveCategories } from "@/lib/catalog-data";
 import { getActiveBannerPromotion } from "@/lib/promotions";
+import { getActiveBanners } from "@/lib/banners-data";
 import { createClient } from "@/lib/supabase/server";
-
-type HeroContent = {
-  eyebrow?: string;
-  title?: string;
-  subtitle?: string;
-  image_url?: string;
-  cta_label?: string;
-  cta_href?: string;
-};
 
 type AboutContent = { title?: string; text1?: string; text2?: string; image_url?: string };
 
@@ -50,6 +42,7 @@ export default async function HomePage() {
     featuredProducts,
     categories,
     activePromotion,
+    heroBanners,
     { data: testimonials },
     { data: faqs },
     { data: galleryItems },
@@ -59,6 +52,7 @@ export default async function HomePage() {
     getFeaturedProducts(),
     getActiveCategories(),
     getActiveBannerPromotion(),
+    getActiveBanners("hero"),
     supabase
       .from("testimonials")
       .select("*")
@@ -82,7 +76,6 @@ export default async function HomePage() {
   ]);
 
   const announcementBar = getSection(sections, "announcement_bar");
-  const hero = getSection(sections, "hero");
   const benefits = getSection(sections, "benefits");
   const about = getSection(sections, "about");
 
@@ -109,7 +102,7 @@ export default async function HomePage() {
       {announcementBar && (
         <AnnouncementBar content={announcementBar.content as { texts?: string[] }} />
       )}
-      {hero && <Hero content={hero.content as HeroContent} />}
+      <HeroCarousel banners={heroBanners} />
 
       {activePromotion && (
         <PromoBanner

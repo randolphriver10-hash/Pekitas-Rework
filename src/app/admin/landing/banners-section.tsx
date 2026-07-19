@@ -76,6 +76,7 @@ export function BannersSection({ banners }: { banners: BannerRow[] }) {
                       message: b.message,
                       cta_text: b.cta_text ?? "",
                       cta_url: b.cta_url ?? "",
+                      image_url: b.image_url ?? "",
                       position: b.position,
                       start_at: toArDatetimeLocal(b.start_at),
                       end_at: toArDatetimeLocal(b.end_at),
